@@ -23,6 +23,7 @@ button { width: 100%; padding: 14px; margin: 6px 0; border: none; border-radius:
 #btnAdauga { background: #2980b9; color: #fff; }
 h3 { color: #aaa; font-size: 0.9rem; margin: 14px 0 4px; }
 #status { color: #aaa; font-size: 0.85rem; text-align: center; margin: 4px 0; min-height: 20px; }
+#procesare { display: none; color: #f39c12; font-size: 0.85rem; text-align: center; margin: 4px 0; }
 </style>
 </head>
 <body>
@@ -51,6 +52,7 @@ h3 { color: #aaa; font-size: 0.9rem; margin: 14px 0 4px; }
 <h3>MESAJ</h3>
 <textarea id="text" placeholder="Mesajul apare aici..."></textarea>
 <p id="status">Ține apăsat butonul și vorbește</p>
+<p id="procesare">⏳ Structurez textul...</p>
 <button id="btnTine">🎙️ ȚINE APĂSAT ȘI VORBEȘTE</button>
 <button id="btnSterge" onclick="stergeText()">🗑️ Șterge mesajul</button>
 <button id="btnWA" onclick="trimitePeWA()">📲 Trimite pe WhatsApp</button>
@@ -62,7 +64,35 @@ let rec = null;
 
 const btn = document.getElementById('btnTine');
 const status = document.getElementById('status');
+const procesare = document.getElementById('procesare');
 const textArea = document.getElementById('text');
+
+async function structureazaText(raw) {
+  procesare.style.display = 'block';
+  status.textContent = '';
+  try {
+    const limba = document.getElementById('limba').value.split('-')[0];
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: `Adaugă punctuație corectă (virgule, puncte, semne de întrebare) la textul următor dictat vocal. Nu schimba cuvintele, nu traduce, nu adăuga nimic extra. Returnează DOAR textul corectat, fără explicații. Limba: ${limba}.\n\nText: ${raw}`
+        }]
+      })
+    });
+    const data = await resp.json();
+    const textCurat = data.content[0].text.trim();
+    textArea.value = textArea.value.replace(raw, textCurat);
+  } catch(e) {
+    // daca API fail, lasam textul original
+  }
+  procesare.style.display = 'none';
+  status.textContent = 'Ține apăsat butonul și vorbește';
+}
 
 function startDictare() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -72,14 +102,22 @@ function startDictare() {
   rec.continuous = false;
   rec.interimResults = true;
   const bazaText = textArea.value;
+  let finalResult = '';
   rec.onresult = e => {
     let interim = '';
-    let final = '';
+    finalResult = '';
     for (let i = 0; i < e.results.length; i++) {
-      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+      if (e.results[i].isFinal) finalResult += e.results[i][0].transcript;
       else interim = e.results[i][0].transcript;
     }
-    textArea.value = bazaText + (final || interim);
+    textArea.value = bazaText + (finalResult || interim);
+  };
+  rec.onend = async () => {
+    if (finalResult) {
+      textArea.value = bazaText;
+      await structureazaText(finalResult);
+      textArea.value = bazaText + (textArea.value || finalResult) + ' ';
+    }
   };
   rec.onerror = () => stopDictare();
   rec.start();
@@ -92,15 +130,11 @@ function stopDictare() {
   if (rec) { rec.stop(); rec = null; }
   btn.classList.remove('activ');
   btn.textContent = '🎙️ ȚINE APĂSAT ȘI VORBEȘTE';
-  status.textContent = 'Ține apăsat butonul și vorbește';
 }
 
-// Mouse (PC)
 btn.addEventListener('mousedown', startDictare);
 btn.addEventListener('mouseup', stopDictare);
 btn.addEventListener('mouseleave', stopDictare);
-
-// Touch (telefon)
 btn.addEventListener('touchstart', e => { e.preventDefault(); startDictare(); });
 btn.addEventListener('touchend', e => { e.preventDefault(); stopDictare(); });
 
@@ -119,7 +153,6 @@ function copiaza() {
   alert('Copiat!');
 }
 
-// Contacte
 function getContacte() { return JSON.parse(localStorage.getItem('contacte') || '[]'); }
 function saveContacte(c) { localStorage.setItem('contacte', JSON.stringify(c)); }
 function adaugaContact() {
