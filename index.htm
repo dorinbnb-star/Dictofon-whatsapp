@@ -66,10 +66,20 @@ const textArea = document.getElementById('text');
 function adaugaPunct(text) {
   if (!text || !text.trim()) return '';
   let t = text.trim();
-  // Prima litera mare
   t = t.charAt(0).toUpperCase() + t.slice(1);
-  // Daca nu se termina cu semn de punctuatie, adauga punct
-  if (!/[.!?]$/.test(t)) t += '.';
+  const cuvinteIntrebare = [
+    'ce','cine','când','unde','cum','cât','câte','câți','care','oare',
+    'ai','ați','ești','este','are','au','pot','poți','vrei','vreți',
+    'merge','mergi','știi','știți','vine','vii','poate','putem','avem',
+    'what','where','when','who','how','why','is','are','do','does','can','will','would','should','have','has',
+    'где','когда','кто','что','как','почему','сколько','есть','могу','можешь'
+  ];
+  const primaVorba = t.split(' ')[0].toLowerCase().replace(/[,.]/, '');
+  const incepeDeC = t.toLowerCase().startsWith('de ce') || t.toLowerCase().startsWith('de unde') || t.toLowerCase().startsWith('de când');
+  const esteIntrebare = cuvinteIntrebare.includes(primaVorba) || incepeDeC;
+  if (!/[.!?]$/.test(t)) {
+    t += esteIntrebare ? '?' : '.';
+  }
   return t;
 }
 
@@ -90,15 +100,13 @@ function startDictare() {
       if (e.results[i].isFinal) finalResult += e.results[i][0].transcript;
       else interim = e.results[i][0].transcript;
     }
-    // Arata textul intermediar
-    const preview = bazaText ? bazaText + ' ' + (finalResult || interim) : (finalResult || interim);
+    const preview = bazaText ? bazaText.trim() + ' ' + (finalResult || interim) : (finalResult || interim);
     textArea.value = preview;
   };
 
   rec.onend = () => {
     if (finalResult.trim()) {
       const frazaCorecta = adaugaPunct(finalResult);
-      // Daca exista text anterior, adauga spatiu
       if (bazaText.trim()) {
         textArea.value = bazaText.trim() + ' ' + frazaCorecta + ' ';
       } else {
