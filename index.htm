@@ -9,19 +9,20 @@
 body { font-family: Arial, sans-serif; background: #111; color: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; }
 h1 { color: #25D366; margin: 20px 0; font-size: 1.4rem; }
 select, input, textarea { width: 100%; padding: 12px; margin: 6px 0; border-radius: 10px; border: none; font-size: 1rem; background: #222; color: #fff; }
-select option { background: #222; }
 button { width: 100%; padding: 14px; margin: 6px 0; border: none; border-radius: 10px; font-size: 1rem; font-weight: bold; cursor: pointer; }
-#btnDictare { background: #25D366; color: #fff; }
-#btnDictare.activ { background: #e74c3c; }
+#btnTine { background: #25D366; color: #fff; padding: 20px; font-size: 1.2rem; user-select: none; -webkit-user-select: none; }
+#btnTine.activ { background: #e74c3c; }
 #btnWA { background: #128C7E; color: #fff; }
 #btnCopy { background: #444; color: #fff; }
+#btnSterge { background: #333; color: #aaa; }
 .section { width: 100%; max-width: 480px; }
 .contact-row { display: flex; gap: 8px; margin: 4px 0; }
 .contact-row input { margin: 0; }
-.btn-mic { background: #555; color: #fff; padding: 10px; border-radius: 10px; border: none; cursor: pointer; flex-shrink: 0; }
+.btn-verde { background: #25D366; color: #fff; padding: 10px; border-radius: 10px; border: none; cursor: pointer; flex: 1; font-weight: bold; }
 .btn-del { background: #e74c3c; color: #fff; padding: 10px; border-radius: 10px; border: none; cursor: pointer; flex-shrink: 0; }
 #btnAdauga { background: #2980b9; color: #fff; }
 h3 { color: #aaa; font-size: 0.9rem; margin: 14px 0 4px; }
+#status { color: #aaa; font-size: 0.85rem; text-align: center; margin: 4px 0; min-height: 20px; }
 </style>
 </head>
 <body>
@@ -41,30 +42,86 @@ h3 { color: #aaa; font-size: 0.9rem; margin: 14px 0 4px; }
 <div class="contact-row">
 <input id="numeNou" type="text" placeholder="Nume">
 <input id="numarNou" type="tel" placeholder="+32470...">
-<button class="btn-mic" onclick="adaugaContact()">+</button>
 </div>
-<button id="btnAdauga" onclick="adaugaContact()">Salvează contact</button>
+<button id="btnAdauga" onclick="adaugaContact()">+ Salvează contact</button>
 
 <h3>TRIMITE CĂTRE</h3>
 <input id="numarSelectat" type="tel" placeholder="Număr selectat sau scrie manual">
 
 <h3>MESAJ</h3>
 <textarea id="text" placeholder="Mesajul apare aici..."></textarea>
-<button id="btnDictare" onclick="toggleDictare()">🎙️ Apasă și vorbește</button>
+<p id="status">Ține apăsat butonul și vorbește</p>
+<button id="btnTine">🎙️ ȚINE APĂSAT ȘI VORBEȘTE</button>
+<button id="btnSterge" onclick="stergeText()">🗑️ Șterge mesajul</button>
 <button id="btnWA" onclick="trimitePeWA()">📲 Trimite pe WhatsApp</button>
 <button id="btnCopy" onclick="copiaza()">📋 Copiază mesajul</button>
 </div>
 
 <script>
-let rec, dictam = false, finalText = '';
+let rec = null;
+
+const btn = document.getElementById('btnTine');
+const status = document.getElementById('status');
+const textArea = document.getElementById('text');
+
+function startDictare() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { alert('Folosește Chrome.'); return; }
+  rec = new SR();
+  rec.lang = document.getElementById('limba').value;
+  rec.continuous = false;
+  rec.interimResults = true;
+  const bazaText = textArea.value;
+  rec.onresult = e => {
+    let interim = '';
+    let final = '';
+    for (let i = 0; i < e.results.length; i++) {
+      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim = e.results[i][0].transcript;
+    }
+    textArea.value = bazaText + (final || interim);
+  };
+  rec.onerror = () => stopDictare();
+  rec.start();
+  btn.classList.add('activ');
+  btn.textContent = '🔴 VORBEȘTE...';
+  status.textContent = 'Ascult...';
+}
+
+function stopDictare() {
+  if (rec) { rec.stop(); rec = null; }
+  btn.classList.remove('activ');
+  btn.textContent = '🎙️ ȚINE APĂSAT ȘI VORBEȘTE';
+  status.textContent = 'Ține apăsat butonul și vorbește';
+}
+
+// Mouse (PC)
+btn.addEventListener('mousedown', startDictare);
+btn.addEventListener('mouseup', stopDictare);
+btn.addEventListener('mouseleave', stopDictare);
+
+// Touch (telefon)
+btn.addEventListener('touchstart', e => { e.preventDefault(); startDictare(); });
+btn.addEventListener('touchend', e => { e.preventDefault(); stopDictare(); });
+
+function stergeText() { textArea.value = ''; }
+
+function trimitePeWA() {
+  const nr = document.getElementById('numarSelectat').value.replace(/\s/g,'');
+  const msg = textArea.value.trim();
+  if (!msg) { alert('Dictează un mesaj mai întâi.'); return; }
+  const url = nr ? `https://wa.me/${nr.replace('+','')}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+}
+
+function copiaza() {
+  navigator.clipboard.writeText(textArea.value);
+  alert('Copiat!');
+}
 
 // Contacte
-function getContacte() {
-  return JSON.parse(localStorage.getItem('contacte') || '[]');
-}
-function saveContacte(c) {
-  localStorage.setItem('contacte', JSON.stringify(c));
-}
+function getContacte() { return JSON.parse(localStorage.getItem('contacte') || '[]'); }
+function saveContacte(c) { localStorage.setItem('contacte', JSON.stringify(c)); }
 function adaugaContact() {
   const nume = document.getElementById('numeNou').value.trim();
   const numar = document.getElementById('numarNou').value.trim();
@@ -91,57 +148,10 @@ function randeazaContacte() {
   if (c.length === 0) { div.innerHTML = '<p style="color:#666;font-size:0.85rem;margin:4px 0">Niciun contact salvat</p>'; return; }
   div.innerHTML = c.map((x, i) => `
     <div class="contact-row">
-      <button class="btn-mic" style="background:#25D366;flex:1" onclick="selecteazaContact('${x.numar}')">${x.nume}</button>
+      <button class="btn-verde" onclick="selecteazaContact('${x.numar}')">${x.nume}</button>
       <button class="btn-del" onclick="stergeContact(${i})">✕</button>
     </div>
   `).join('');
-}
-
-// Dictare
-function toggleDictare() {
-  if (!dictam) {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { alert('Folosește Chrome pentru dictare.'); return; }
-    rec = new SR();
-    rec.lang = document.getElementById('limba').value;
-    rec.continuous = false;
-    rec.interimResults = true;
-    finalText = document.getElementById('text').value;
-    rec.onresult = e => {
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) finalText += e.results[i][0].transcript + ' ';
-        else interim = e.results[i][0].transcript;
-      }
-      document.getElementById('text').value = finalText + interim;
-    };
-    rec.onend = () => {
-      if (dictam) { rec.start(); }
-    };
-    rec.start();
-    dictam = true;
-    document.getElementById('btnDictare').textContent = '⏹️ Oprește dictarea';
-    document.getElementById('btnDictare').classList.add('activ');
-  } else {
-    rec.onend = null;
-    rec.stop();
-    dictam = false;
-    document.getElementById('btnDictare').textContent = '🎙️ Apasă și vorbește';
-    document.getElementById('btnDictare').classList.remove('activ');
-  }
-}
-
-function trimitePeWA() {
-  const nr = document.getElementById('numarSelectat').value.replace(/\s/g,'');
-  const msg = document.getElementById('text').value.trim();
-  if (!msg) { alert('Dictează un mesaj mai întâi.'); return; }
-  const url = nr ? `https://wa.me/${nr.replace('+','')}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
-  window.open(url, '_blank');
-}
-
-function copiaza() {
-  navigator.clipboard.writeText(document.getElementById('text').value);
-  alert('Copiat!');
 }
 
 randeazaContacte();
