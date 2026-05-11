@@ -25,19 +25,30 @@ button { width: 100%; padding: 14px; margin: 6px 0; border: none; border-radius:
 #btnAdauga { background: #2980b9; color: #fff; }
 h3 { color: #aaa; font-size: 0.9rem; margin: 14px 0 4px; }
 #status { color: #aaa; font-size: 0.85rem; text-align: center; margin: 4px 0; min-height: 20px; }
+.row2 { display: flex; gap: 8px; }
+.row2 select { margin: 6px 0; }
 </style>
 </head>
 <body>
 <div class="section">
 <h1>🎙️ Dictare WhatsApp</h1>
 
-<h3>LIMBĂ</h3>
+<h3>DICTEZ ÎN</h3>
+<div class="row2">
 <select id="limba">
 <option value="ro-RO">Română</option>
 <option value="ru-RU">Rusă</option>
 <option value="en-US">Engleză</option>
 <option value="fr-FR">Franceză</option>
 </select>
+<select id="traduce">
+<option value="">Fără traducere</option>
+<option value="en">Traduce în EN</option>
+<option value="fr">Traduce în FR</option>
+<option value="ru">Traduce în RU</option>
+<option value="ro">Traduce în RO</option>
+</select>
+</div>
 
 <h3>CONTACTE SALVATE</h3>
 <div id="listaContacte"></div>
@@ -73,16 +84,27 @@ function adaugaPunct(text) {
     'ce','cine','când','unde','cum','cât','câte','câți','care','oare',
     'ai','ați','ești','este','are','au','pot','poți','vrei','vreți',
     'merge','mergi','știi','știți','vine','vii','poate','putem','avem',
-    'what','where','when','who','how','why','is','are','do','does','can','will','would','should','have','has',
+    'what','where','when','who','how','why','is','do','does','can','will','would','should','have','has',
     'где','когда','кто','что','как','почему','сколько','есть','могу','можешь'
   ];
   const primaVorba = t.split(' ')[0].toLowerCase().replace(/[,.]/, '');
   const incepeDeC = t.toLowerCase().startsWith('de ce') || t.toLowerCase().startsWith('de unde') || t.toLowerCase().startsWith('de când');
   const esteIntrebare = cuvinteIntrebare.includes(primaVorba) || incepeDeC;
-  if (!/[.!?]$/.test(t)) {
-    t += esteIntrebare ? '?' : '.';
-  }
+  if (!/[.!?]$/.test(t)) t += esteIntrebare ? '?' : '.';
   return t;
+}
+
+async function traduceText(text, spre) {
+  if (!spre) return null;
+  const limba = document.getElementById('limba').value.split('-')[0];
+  try {
+    status.textContent = 'Traduc...';
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${limba}|${spre}`;
+    const r = await fetch(url);
+    const d = await r.json();
+    if (d.responseStatus === 200) return d.responseData.translatedText;
+  } catch(e) {}
+  return null;
 }
 
 function startDictare() {
@@ -106,14 +128,15 @@ function startDictare() {
     textArea.value = preview;
   };
 
-  rec.onend = () => {
+  rec.onend = async () => {
     if (finalResult.trim()) {
-      const frazaCorecta = adaugaPunct(finalResult);
-      if (bazaText.trim()) {
-        textArea.value = bazaText.trim() + ' ' + frazaCorecta + ' ';
-      } else {
-        textArea.value = frazaCorecta + ' ';
+      const spre = document.getElementById('traduce').value;
+      let frazaFinala = adaugaPunct(finalResult);
+      if (spre) {
+        const tradus = await traduceText(finalResult, spre);
+        if (tradus) frazaFinala = adaugaPunct(tradus);
       }
+      textArea.value = bazaText.trim() ? bazaText.trim() + ' ' + frazaFinala + ' ' : frazaFinala + ' ';
     }
     btn.classList.remove('activ');
     btn.textContent = '🎙️ ȚINE APĂSAT ȘI VORBEȘTE';
