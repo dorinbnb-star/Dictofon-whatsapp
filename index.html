@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#111111">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Dictare WhatsApp</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:#111;color:#f0f0f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:2rem 1.25rem 3rem}
+h1{font-size:1.1rem;font-weight:500;color:#25D366;margin-bottom:.25rem}
+.sub{font-size:.78rem;color:#666;margin-bottom:2rem;text-align:center}
+.mic-wrap{display:flex;justify-content:center;margin-bottom:1.5rem}
+#mic-btn{width:96px;height:96px;border-radius:50%;border:2px solid #333;background:#1a1a1a;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:border-color .2s,transform .1s;-webkit-appearance:none;outline:none}
+#mic-btn svg{width:36px;height:36px;fill:#f0f0f0;transition:fill .2s}
+#mic-btn.recording{border-color:#25D366}
+#mic-btn.recording svg{fill:#25D366}
+#mic-btn:active{transform:scale(.94)}
+.pulse{display:none;position:absolute;inset:-8px;border-radius:50%;border:2px solid #25D366;animation:pulse 1.3s ease-out infinite}
+#mic-btn.recording .pulse{display:block}
+@keyframes pulse{0%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(1.6)}}
+.status{font-size:.8rem;color:#555;margin-bottom:1.25rem;text-align:center;min-height:1.2em;transition:color .2s}
+.status.active{color:#25D366}
+.lang-row{display:flex;gap:8px;margin-bottom:1rem;width:100%;max-width:360px}
+.lang-btn{flex:1;padding:8px 0;border-radius:8px;border:1px solid #2a2a2a;background:#1a1a1a;color:#888;font-size:.8rem;cursor:pointer;transition:all .15s;-webkit-appearance:none}
+.lang-btn.active{border-color:#25D366;color:#25D366;background:#0d1f12}
+textarea{width:100%;max-width:360px;min-height:120px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:14px;font-size:1rem;color:#f0f0f0;line-height:1.6;resize:vertical;outline:none;font-family:inherit;margin-bottom:1rem}
+textarea::placeholder{color:#444}
+.row{display:flex;gap:8px;width:100%;max-width:360px;margin-bottom:.75rem}
+.btn-sec{flex:1;padding:11px 0;border-radius:10px;border:1px solid #2a2a2a;background:#1a1a1a;color:#888;font-size:.85rem;cursor:pointer;-webkit-appearance:none}
+.btn-sec:active{background:#222}
+input[type=tel]{width:100%;max-width:360px;padding:12px 14px;border-radius:10px;border:1px solid #2a2a2a;background:#1a1a1a;color:#f0f0f0;font-size:.95rem;outline:none;font-family:inherit;margin-bottom:1rem}
+input[type=tel]::placeholder{color:#444}
+#send-btn{width:100%;max-width:360px;padding:15px;border-radius:12px;border:none;background:#25D366;color:#fff;font-size:1rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;-webkit-appearance:none}
+#send-btn:active{opacity:.85;transform:scale(.98)}
+#send-btn svg{width:22px;height:22px;fill:white}
+.label{width:100%;max-width:360px;font-size:.75rem;color:#555;margin-bottom:6px}
+.error{color:#e05;font-size:.78rem;text-align:center;margin-top:.75rem;min-height:1em}
+.hint{font-size:.7rem;color:#444;text-align:center;margin-top:2rem;line-height:1.6;max-width:300px}
+</style>
+</head>
+<body>
+<h1>🎙 Dictare WhatsApp</h1>
+<p class="sub">Vorbești — ea scrie — trimiți</p>
+<div class="mic-wrap">
+<button id="mic-btn" aria-label="Start dictare">
+<div class="pulse"></div>
+<svg viewBox="0 0 24 24"><path d="M12 1a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v6a2 2 0 0 0 4 0V5a2 2 0 0 0-2-2zm7 8a1 1 0 0 1 1 1 8 8 0 0 1-7 7.938V21h2a1 1 0 0 1 0 2H9a1 1 0 0 1 0-2h2v-1.062A8 8 0 0 1 4 12a1 1 0 0 1 2 0 6 6 0 0 0 12 0 1 1 0 0 1 1-1z"/></svg>
+</button>
+</div>
+<p class="status" id="status">Apasă microfonul și vorbește</p>
+<div class="lang-row">
+<button class="lang-btn active" data-lang="ro-RO">🇷🇴 RO</button>
+<button class="lang-btn" data-lang="ru-RU">🇷🇺 RU</button>
+<button class="lang-btn" data-lang="en-US">🇬🇧 EN</button>
+<button class="lang-btn" data-lang="fr-FR">🇫🇷 FR</button>
+</div>
+<textarea id="msg" placeholder="Textul dictat apare aici..."></textarea>
+<div class="row">
+<button class="btn-sec" id="clear-btn">🗑 Șterge</button>
+<button class="btn-sec" id="copy-btn">📋 Copiază</button>
+</div>
+<p class="label">Număr WhatsApp (cu prefix, fără +):</p>
+<input type="tel" id="wa-num" placeholder="32470000000">
+<button id="send-btn">
+<svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.116.554 4.103 1.523 5.824L.057 23.215a.75.75 0 0 0 .918.932l5.375-1.485A11.943 11.943 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 2a10 10 0 1 1 0 20A10 10 0 0 1 12 2z"/></svg>
+Trimite pe WhatsApp
+</button>
+<p class="error" id="error"></p>
+<p class="hint">Funcționează în Chrome pe Android.</p>
+<script>
+const micBtn=document.getElementById('mic-btn'),msgBox=document.getElementById('msg'),statusEl=document.getElementById('status'),errorEl=document.getElementById('error'),sendBtn=document.getElementById('send-btn'),clearBtn=document.getElementById('clear-btn'),copyBtn=document.getElementById('copy-btn'),waNum=document.getElementById('wa-num'),langBtns=document.querySelectorAll('.lang-btn');
+let recognition=null,isRecording=false,finalText='',selectedLang='ro-RO';
+langBtns.forEach(btn=>{btn.addEventListener('click',()=>{langBtns.forEach(b=>b.classList.remove('active'));btn.classList.add('active');selectedLang=btn.dataset.lang;if(isRecording){stopRec();setTimeout(startRec,300)}})});
+function setStatus(txt,active){statusEl.textContent=txt;statusEl.className='status'+(active?' active':'')}
+function showError(msg){errorEl.textContent=msg;setTimeout(()=>errorEl.textContent='',4000)}
+function startRec(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){showError('Folosește Chrome pe Android.');return}finalText=msgBox.value;recognition=new SR();recognition.continuous=true;recognition.interimResults=true;recognition.lang=selectedLang;recognition.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)finalText+=e.results[i][0].transcript+' ';else interim+=e.results[i][0].transcript}msgBox.value=finalText+interim};recognition.onerror=e=>{if(e.error==='not-allowed')showError('Activează microfonul în Chrome → Setări → Permisiuni.');else if(e.error!=='no-speech')showError('Eroare: '+e.error);stopRec()};recognition.onend=()=>{if(isRecording)recognition.start()};recognition.start();isRecording=true;micBtn.classList.add('recording');setStatus('Ascultă... (apasă din nou să oprești)',true)}
+function stopRec(){if(recognition){recognition.onend=null;recognition.stop();recognition=null}isRecording=false;micBtn.classList.remove('recording');setStatus('Gata. Editează sau trimite.',false)}
+micBtn.addEventListener('click',()=>isRecording?stopRec():startRec());
+clearBtn.addEventListener('click',()=>{if(isRecording)stopRec();msgBox.value='';finalText='';setStatus('Apasă microfonul și vorbește',false)});
+copyBtn.addEventListener('click',()=>{if(!msgBox.value.trim()){showError('Nimic de copiat.');return}if(navigator.clipboard){navigator.clipboard.writeText(msgBox.value.trim()).then(()=>setStatus('Copiat!',true))}else{msgBox.select();document.execCommand('copy');setStatus('Copiat!',true)}});
+sendBtn.addEventListener('click',()=>{const text=msgBox.value.trim();if(!text){showError('Dictează sau scrie un mesaj mai întâi.');return}const num=waNum.value.replace(/\D/g,'');window.open('https://wa.me/'+(num||'')+'?text='+encodeURIComponent(text),'_blank')});
+waNum.value=localStorage.getItem('wa_num')||'';
+waNum.addEventListener('input',()=>localStorage.setItem('wa_num',waNum.value));
+</script>
+</body>
+</html>
